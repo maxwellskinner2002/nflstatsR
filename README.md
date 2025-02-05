@@ -1,11 +1,10 @@
----
-title: "NFL Fantasy Football Stats Repository"
-author: "Maxwell Skinner"
-date: "`r Sys.Date()`"
-output: html_document
----
+# NFL Fantasy Football Stats Repository
 
-# nflstatsR
+### Author: Maxwell Skinner
+
+### Date: `r Sys.Date()`
+
+## **nflstatsR**
 
 Personal Project with the goal of analyzing NFL stats and trends to optimize fantasy football drafting and mid-season roster adjustments and trade analyzers
 
