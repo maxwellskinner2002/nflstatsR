@@ -185,14 +185,17 @@ player_summary <- player_summary %>% left_join(player_activity, by = c("player_n
 
 # Player Summaries by position group to perform LR. 
 
-qb_performance <- player_summary %>% filter(position == "QB")
+qb_performance <- player_summary %>% filter(position == "QB") %>% arrange(recent_team, desc(pass_yards)) %>%
+  distinct(recent_team, .keep_all = TRUE)  # Keep only the top QB for each team
 
-wr_performance <- player_summary %>% filter(position == "WR")
+wr_performance <- player_summary %>% filter(position == "WR") %>% arrange(recent_team, desc(rec_yards)) %>%
+  distinct(recent_team, .keep_all = TRUE)  # Keep only the top QB for each team
 
-rb_performance <- player_summary %>% filter(position == "RB")
+rb_performance <- player_summary %>% filter(position == "RB") %>% arrange(recent_team, desc(rush_yards)) %>%
+  distinct(recent_team, .keep_all = TRUE)  # Keep only the top QB for each team
 
 # Merge OL performance with QB stats
-analysis_data <- qb_performance %>%
+analysis_data <- rb_performance %>%
   left_join(ol_ranking, by = c("recent_team" = "posteam"))
 
 # Filter to top QB of each team
@@ -213,7 +216,7 @@ colnames(analysis_data)
 
 
 # Visual for QB passing epa vs offensive line wpa 
-ggplot(data = analysis_data, aes(x = season_avg_wpa, y = avg_passing_epa)) +
+ggplot(data = analysis_data, aes(x = season_avg_wpa, y = avg_rushing_epa)) +
   geom_point(shape = 21,
              fill = analysis_data$team_color,
              color = analysis_data$team_color2,
@@ -221,7 +224,7 @@ ggplot(data = analysis_data, aes(x = season_avg_wpa, y = avg_passing_epa)) +
   geom_text_repel(aes(label = player_name))
 
   # Linear regression to see OL impact on QB performance
-model <- lm(avg_passing_epa ~ season_avg_wpa, data = analysis_data)
+model <- lm(avg_rushing_epa ~ season_avg_wpa, data = analysis_data)
 summary(model)
 
 
