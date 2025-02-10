@@ -26,19 +26,21 @@ Draft pick
 Birthday
 
 Base Salary 
-Signing bonus
-Incentives
-Cap Value
+Signing bonus -- TBD
+Incentives -- TBD
+Cap Value -- Needs more work to fully flesh out
 Snaps
 Holding penalties on rush attempts 
 Holding penalties on pass attempts 
 
+* This group of stats are TBD until I can determine sides and directions of plays
 Rush attempts to side/not to side
 Stuffs to side/not to side
 Rush yards to side/not to side
 Rush touchdowns to side/not to side
 Successful rushes to side/not to side
 
+* to side/not to side stats are TBD until I can determine sides and directions of plays
 Passing yards 
 Dropbacks
 Passing attempts 
@@ -78,8 +80,7 @@ pbp_structure <- tibble::tibble(
 participation <- load_participation(seasons = 2023, include_pbp = TRUE) %>% 
   filter(play_type %in% c("pass", "run")) %>% # Filter to only pass and run plays
   filter(season_type == "REG") %>%
-  separate_rows(offense_players, sep = ";") %>% # Splits listed players on plays into separate rows 
-  #roup_by(offense_players, play_id)
+  separate_rows(offense_players, sep = ";") # Splits listed players on plays into separate rows 
 
 
 # Load individual player information
@@ -100,8 +101,17 @@ contracts <- load_contracts() %>%
 rosters <-  rosters %>% left_join(contracts, by = c("gsis_id" = "gsis_id"))
 
 
-oline_participation <- participation %>%
-  left_join(rosters, by = c("gsis_id" = "offensive_players"))
+# Active lineup of each offensive player per player per play
+full_lineup_by_play <- participation %>%
+  left_join(rosters, by = c("offense_players" = "gsis_id"))
 
+participation_structure <- tibble::tibble(
+  Column = names(participation),
+  Type = sapply(participation, class)
+)
+
+
+# Filtering to only offensive line players 
+ol_participation <- full_lineup_by_play %>% filter(depth_chart_position %in% c("T", "G", "C")) 
 
 
