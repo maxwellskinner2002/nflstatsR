@@ -8,9 +8,17 @@ library(nflplotR)
 
 # Analyzing the monetary value of offensive linemen 
 
+"Biggest need for further analysis: attributing offensive linemen to specific sides of the OL. 
+Current players are only listed as tackles/guards but there is no data indicating what side they were lined up on"
+
+"Answer: If we limit to analysis of just starting lineman, we can have a strong assumption of which specific position each player played"
+
+
 "game-by-game data for every offensive lineman that was recorded as having
 played at least 1 snap in a regular season or playoff game from the 2013-2014 and 2014-2015
 seasons."
+
+"for each unique offensive line formation, can we establish the position (LG, RG, LT, RT) of the lineman present on that play?"
 
 "
 Unique game code
@@ -53,6 +61,12 @@ Knockdowns to side/not to side
 Quarterback release time/attempts 
 Release time/attempts under pressure
 
+
+* I am missing data for probowl appearances, all pro selections, and one other list but I forgot the name of
+
+adjusted sack rate: sacks / (sacks + passes)
+  - how frequently a passer was sacked per pass attempt
+
 "
 
 
@@ -65,7 +79,7 @@ Release time/attempts under pressure
 # Merge with load_rosters() to get player-specific data (e.g., draft round, rookie year).
 # Analyze Salaries (load_contracts()) to compare performance vs. cost.
 
-pbp <- load_pbp(2023)
+#pbp <- load_pbp(2023)
 
 library(tibble)
 
@@ -80,8 +94,36 @@ pbp_structure <- tibble::tibble(
 participation <- load_participation(seasons = 2023, include_pbp = TRUE) %>% 
   filter(play_type %in% c("pass", "run")) %>% # Filter to only pass and run plays
   filter(season_type == "REG") %>%
-  separate_rows(offense_players, sep = ";") # Splits listed players on plays into separate rows 
+  mutate(gsis_id = stringr::str_split(offense_players, ";"),
+      stuffed = ifelse(play_type == "run" & yards_gained < 0, 1, 0), # Including stuffs as a binary indicator
+         qbh_inc = ifelse(qb_hit == 1 & incomplete_pass == 1, 1,0), # QB hit, incomplete pass
+         qb_int = ifelse(qb_hit == 1 & interception == 1, 1,0), # QB hit, interception
+         aly_yards = case_when( # Including adjusted line yards
+           play_type == "run" & yards_gained < 0 ~ yards_gained * 1.2,   # Losses: 120% value
+           play_type == "run" & yards_gained >= 0 & yards_gained <= 4 ~ yards_gained * 1.0,  # 0-4 yards: 100% value
+           play_type == "run" & yards_gained >= 5 & yards_gained <= 10 ~ yards_gained * 0.5, # 5-10 yards: 50% value
+           play_type == "run" & yards_gained > 10 ~ 0,                  # 11+ yards: 0% value
+           play_type == "pass" ~ 0,                                      # Pass plays get 0 ALY
+           TRUE ~ NA_real_)) %>%
+  #separate_rows(offense_players, sep = ";") # Splits listed players on plays into separate rows 
+  tidyr::unnest(c(gsis_id))
 
+
+participation <- participation %>% select(gsis_id, nflverse_game_id, play_id, possession_team, offense_formation, 
+                         offense_personnel, players_on_play, offense_players,ngs_air_yards, time_to_throw, 
+                         was_pressure, route, home_team, away_team, season_type, week, posteam, defteam, drive, 
+                         play_type, yards_gained, qb_dropback, qb_kneel, qb_spike, qb_scramble, pass_length, pass_location, 
+                         air_yards, yards_after_catch, run_location, run_gap, incomplete_pass, interception, qb_hit, 
+                         rush_attempt, pass_attempt, sack, touchdown, pass_touchdown, rush_touchdown, rusher_player_id, 
+                         rusher_player_name, rushing_yards, penalty_team, penalty_player_id, penalty_player_name, penalty_yards, 
+                         penalty_type, stuffed, qbh_inc, qb_int, aly_yards) %>% 
+                                    mutate(penalty_yards = ifelse(gsis_id == penalty_player_id, penalty_yards, 0)) # Assign penalty yards only if gsis_id matches the penalized player
+
+
+participation_by_game <- participation %>% 
+  group_by()r %>% 
+  summarize() %>%
+  ungroup()
 
 # Load individual player information
 rosters <- load_rosters(2023) %>% 
@@ -103,15 +145,42 @@ rosters <-  rosters %>% left_join(contracts, by = c("gsis_id" = "gsis_id"))
 
 # Active lineup of each offensive player per player per play
 full_lineup_by_play <- participation %>%
-  left_join(rosters, by = c("offense_players" = "gsis_id"))
+  left_join(rosters, by = c("gsis_id" = "gsis_id"))
 
-participation_structure <- tibble::tibble(
+total_pbp_structure <- tibble::tibble(
   Column = names(participation),
   Type = sapply(participation, class)
 )
 
 
 # Filtering to only offensive line players 
-ol_participation <- full_lineup_by_play %>% filter(depth_chart_position %in% c("T", "G", "C")) 
+# Not including epa/wpa columns, nor anything pertaining to special teams blocking yet. 
+# This is play by play information that is not aggregated at all yet
+
+ol_participation <- full_lineup_by_play %>% 
+  filter(depth_chart_position %in% c("T", "G", "C")) 
+
+
+# Loads 2024 season snap counts for each player by each game
+snap_counts <- load_snap_counts(season = 2023) %>% filter(game_type == "REG")
+
+# Has all player ids to join different data sets together
+player_ids <- load_ff_playerids()
+
+# Advanced RB performance by game or by season
+# Join by game id and team to attribute these stats to players
+rush_advstats <- load_pfr_advstats(season = 2023, stat_type = "rush")
+
+# Advanced QB related stats by season or by game for each respective QB. Include season argument if wanting historical data
+pass_advstats <- load_pfr_advstats(season = 2023, stat_type = "pass")
+
+
+
+
+
+
+
+
+
 
 
